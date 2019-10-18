@@ -393,8 +393,10 @@ class ModelBsmCondMC:
         np.random.seed(12345)
         volmc = np.ones((self.sample, tstep+1))
         Z1 = np.random.normal(size=(self.sample, tstep))
-        volmc[:, 1:] = np.cumsum(self.alpha*np.sqrt(d_t)*Z1 - 0.5*self.alpha**2*d_t,axis =1)
-        volmc = sigma*np.exp(volmc)
+
+        volmc[:,1:] = np.cumprod(np.exp(self.alpha*np.sqrt(d_t)*Z1 - 0.5*self.alpha**2*d_t), axis = 1)
+        volmc = sigma * volmc
+        
         
         sweight = np.ones(tstep + 1)
         sweight[1::2] = 4
@@ -430,10 +432,10 @@ class ModelNormalCondMC:
         self.intr = intr
         self.divr = divr
         self.sample = sample
-        self.tstep= tstep
+        self.tstep= tsteo
         self.normal_model = normal.Model(texp, sigma, intr=intr, divr=divr)
         
-    def norm_vol(self, strike, spot, texp=None, sigma=None):
+    def norm_vol(self, strike, spot, texp=None, sigma=None,cp_sign=1):
         ''''
         From the price from self.price() compute the implied vol
         this is the opposite of normal_vol in ModelNormalHagan class
@@ -459,18 +461,19 @@ class ModelNormalCondMC:
         d_t = texp/tstep
         
         np.random.seed(12345)
-        volmc = np.ones((self.sample, tstep+1))
+        volmc2 = np.ones((self.sample, tstep+1))
         Z1 = np.random.normal(size=(self.sample, tstep))
-        volmc[:, 1:] = np.cumsum(self.alpha*np.sqrt(d_t)*Z1 - 0.5*self.alpha**2*d_t,axis =1)
-        volmc = sigma*np.exp(volmc)
+
+        volmc2[:,1:] = np.cumprod(np.exp(self.alpha*np.sqrt(d_t)*Z1 - 0.5*self.alpha**2*d_t), axis = 1)
+        volmc2 = sigma * volmc2
         
         sweight = np.ones(tstep + 1)
         sweight[1:-1] = 2
         sweight = np.resize(sweight, (self.sample, tstep + 1))
         
-        IV= d_t/2 * np.cumsum(sweight * volmc**2, axis =1)
+        IV= d_t/2 * np.cumsum(sweight * volmc2**2, axis =1)
         
-        ConMC_normspot = spot + self.rho/self.alpha*(volmc[:,-1]-volmc[:,0])
+        ConMC_normspot = spot + self.rho/self.alpha*(volmc2[:,-1]-volmc2[:,0])
         ConMC_normvol = np.sqrt((1-self.rho**2)*IV[:,-1]/texp)
         ConMC_normprice = self.normal_model.price(strike, ConMC_normspot[:,None], texp, ConMC_normvol[:,None], cp_sign=cp_sign)
         price = np.mean(ConMC_normprice, axis = 0)
