@@ -201,9 +201,9 @@ class ModelNormalHagan:
             for i in range(3):
                 implvol[i]=self.normal_model.impvol(price_or_vol3[i],strike3[i],spot,texp,cp_sign = cp_sign)
         
-        fun = lambda _calprmt:\
+        nfun = lambda _calprmt:\
             norm_vol(strike3, forward, texp, _calprmt[0], alpha = _calprmt[1], rho = _calprmt[2])-implvol
-        para = sopt.root(fun, [0.1*forward,0.1,0]).x
+        para = sopt.root(nfun, [0.1*forward,0.1,0]).x
         return para # sigma, alpha, rho
 
 
@@ -327,8 +327,10 @@ class ModelNormalMC:
         
         volmc = np.ones((self.sample, tstep+1))
         Z1 = np.random.normal(size=(self.sample, tstep))
+        
         volmc[:, 1:] = np.cumsum(self.alpha*np.sqrt(d_t)*Z1 - 0.5*self.alpha**2*d_t,axis =1)
         volmc = sigma*np.exp(volmc[:, :-1])
+        
         
         np.random.seed(54321)
         Z2 = self.rho * Z1 + np.sqrt(1 - self.rho**2) * np.random.normal(size = (self.sample, tstep))
@@ -432,7 +434,7 @@ class ModelNormalCondMC:
         self.intr = intr
         self.divr = divr
         self.sample = sample
-        self.tstep= tsteo
+        self.tstep= tstep
         self.normal_model = normal.Model(texp, sigma, intr=intr, divr=divr)
         
     def norm_vol(self, strike, spot, texp=None, sigma=None,cp_sign=1):
